@@ -1,0 +1,52 @@
+%% Cramer Rao Bound (CRB) Calculation
+% Assuming 'Data', 'Clean', 'fs', and 'nrmics' are defined
+crlb = calculateCRLB(Data, Clean, fs, nrmics);
+
+% Plotting CRLB
+figure;
+plot(1:nrmics, crlb);
+xlabel('Number of Microphones');
+ylabel('Cramer Rao Lower Bound');
+title('CRLB vs Number of Microphones');
+
+
+function crlb = calculateCRLB(Data, Clean, fs, nrmics)
+    % Data: Matrix with microphone signals (time x microphones)
+    % Clean: Clean signal
+    % fs: Sampling frequency
+    % nrmics: Number of microphones
+
+    % Parameters for framing and FFT
+    frameLength = 0.02; % 20 ms frames
+    frameShift = 0.01; % 50% overlap (10 ms)
+    frameSize = floor(frameLength * fs);
+    shiftSize = floor(frameShift * fs);
+    numFrames = floor((length(Clean) - frameSize) / shiftSize) + 1;
+    K = frameSize; % Frequency bins
+
+    % Initialize variables
+    crlb = zeros(nrmics, 1);
+
+    % Loop over number of microphones
+    for m = 1:nrmics
+        snrSum = 0;
+        for l = 1:numFrames
+            frameStart = (l-1) * shiftSize + 1;
+            frameEnd = frameStart + frameSize - 1;
+
+            % Frame from clean signal and noisy signals
+            cleanFrame = Clean(frameStart:frameEnd);
+            noisyFrame = Data(frameStart:frameEnd, 1:m);
+
+            % FFT of frames
+            S = fft(cleanFrame, K);
+            Y = fft(noisyFrame, K);
+            signalPower = abs(S).^2;
+            noisePower = abs(Y - repmat(S, 1, m)).^2;
+            snrFrame = mean(signalPower ./ mean(noisePower, 2));
+            snrSum = snrSum + snrFrame;
+        end
+        avgSNR = snrSum / (K * numFrames);
+        crlb(m) = 1 / avgSNR;
+    end
+end
