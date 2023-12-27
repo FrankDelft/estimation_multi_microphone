@@ -22,7 +22,10 @@
     K = frameSize; % Frequency bins
     L = numFrames; % Number of time frames
     varemp = zeros(nrmics, 1);
+    window=hann(K);
 
+    
+    
     % Loop over number of microphones
     for m = 1:nrmics
         varianceSum = 0;
@@ -39,8 +42,8 @@
             micFrame = mean(Data(frameStart:frameEnd, 1:m), 2);
 
             % FFT of frames
-            S = fft(cleanFrame, K);
-            EstimatedS = fft(micFrame, K);
+            S = fft(cleanFrame.*window, K);
+            EstimatedS = fft(micFrame.*window, K);
 
             % Variance for this frame
             varianceSum = varianceSum + sum(abs(EstimatedS - S).^2);
@@ -66,27 +69,23 @@ for m = 1:nrmics
         frameStart = (l-1) * shiftSize + 1;
         frameEnd = frameStart + frameSize - 1;
 
-        noise_FFT=fft(Data(frameStart:frameEnd,m),K);
+        noise_FFT=fft(Data(frameStart:frameEnd,m).*window,K);
         mic_m_sum=mic_m_sum+noise_FFT.*(1/L_1s);
     end
     estimated_noise(m)=var(mic_m_sum);
 end
-average_noise=mean(estimated_noise);
-
-%get pointwise inverse of each varraince
-inverse_estimated_noise=1./estimated_noise;
 
 %now lets get the fischer information for different numbers of microphones
-cum_sum_inverse_estimated_noise=cumsum(inverse_estimated_noise);
+cum_sum_inverse_estimated_noise=cumsum(1./estimated_noise);
 
 %now lets calculate the CRLB for different numbers of microphones
 crlb_m=1./cum_sum_inverse_estimated_noise;
 
-plot(crlb_m*K/3)
-hold on;
-plot(varemp)
-hold off;
-legend("crlb","actual")
+plot(crlb_m)
+%hold on;
+%plot(varemp)
+%hold off;
+%legend("crlb","actual")
 
 
 
