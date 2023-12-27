@@ -3,7 +3,7 @@ load("Data.mat");
 fs=16000;
 %calculate necessary variables for overlap procdure
 window_length=(20*10^-3)*fs;
-window=hann(window_length);
+window=ones(1);
 %calculate energy of the window
 U=sum(window.^2).*1/length(window);
 
@@ -19,7 +19,7 @@ K=floor((N-window_length+D)/D);
 
 %%
 %number of microphones to use
-m_num=2;
+m_num=1;
 
 %split sound signal into separate overlapped frames for each microphone
 Y_l_k=zeros(K,window_length);

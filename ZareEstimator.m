@@ -1,11 +1,12 @@
     % estimatedSignal: The estimated signal using the weighted average
-
+   
     [numSamples, numMics] = size(Data);
     weights = ones(numMics, 1) / numMics; % Equal weights
     estimatedSignal = Data * weights; % Weighted average across microphones
+    
     %plot(Data)
     plot(estimatedSignal)
-
+    fs=16000;
 %% Variance calculations
 
     % Parameters for framing
@@ -48,5 +49,46 @@
         % Average variance for this number of microphones
         varemp(m) = varianceSum / (K * L);
     end
+
+    
+%% 
+
+
+%now to make an estimate of the noise based on the 1st second of noise
+Noise_duration=1;
+L_1s=(Noise_duration-frameLength)/(frameLength*(0.5))+1;
+
+estimated_noise=zeros(nrmics,1);
+
+for m = 1:nrmics
+    mic_m_sum=0;
+    for l = 1:L_1s
+        frameStart = (l-1) * shiftSize + 1;
+        frameEnd = frameStart + frameSize - 1;
+
+        noise_FFT=fft(Data(frameStart:frameEnd,m),K);
+        mic_m_sum=mic_m_sum+noise_FFT.*(1/L_1s);
+    end
+    estimated_noise(m)=var(mic_m_sum);
+end
+average_noise=mean(estimated_noise);
+
+%get pointwise inverse of each varraince
+inverse_estimated_noise=1./estimated_noise;
+
+%now lets get the fischer information for different numbers of microphones
+cum_sum_inverse_estimated_noise=cumsum(inverse_estimated_noise);
+
+%now lets calculate the CRLB for different numbers of microphones
+crlb_m=1./cum_sum_inverse_estimated_noise;
+
+plot(crlb_m*K/3)
+hold on;
+plot(varemp)
+hold off;
+legend("crlb","actual")
+
+
+
 
     
