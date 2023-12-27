@@ -60,32 +60,67 @@
 %now to make an estimate of the noise based on the 1st second of noise
 Noise_duration=1;
 L_1s=(Noise_duration-frameLength)/(frameLength*(0.5))+1;
-
-estimated_noise=zeros(nrmics,1);
+ %variance over L frames
+estimated_noise=zeros(nrmics,K);
 
 for m = 1:nrmics
-    mic_m_sum=0;
+    mic_m_sum=zeros(K,1);
     for l = 1:L_1s
         frameStart = (l-1) * shiftSize + 1;
         frameEnd = frameStart + frameSize - 1;
 
         noise_FFT=fft(Data(frameStart:frameEnd,m).*window,K);
-        mic_m_sum=mic_m_sum+noise_FFT.*(1/L_1s);
+        mic_m_sum=mic_m_sum+abs(noise_FFT).^2;
     end
-    estimated_noise(m)=var(mic_m_sum);
+    estimated_noise(m,:)=(mic_m_sum').*(1/L);
+    
 end
+%average over the frequency bins and 
+var_m=mean(estimated_noise,2);
+
+%% 
 
 %now lets get the fischer information for different numbers of microphones
-cum_sum_inverse_estimated_noise=cumsum(1./estimated_noise);
+cum_sum_inverse_estimated_noise=cumsum(1./var_m);
 
 %now lets calculate the CRLB for different numbers of microphones
 crlb_m=1./cum_sum_inverse_estimated_noise;
 
 plot(crlb_m)
-%hold on;
-%plot(varemp)
-%hold off;
+hold on;
+plot(varemp)
+hold off;
 %legend("crlb","actual")
+
+%% 
+   varemp2 = zeros(nrmics, 1);
+   % Loop over number of microphones
+    for m = 1:nrmics
+        varianceSum = 0;
+
+        % Process each frame
+        for l = 1:L
+            frameStart = (l-1) * shiftSize + 1;
+            frameEnd = frameStart + frameSize - 1;
+
+            % Frame from clean signal
+            cleanFrame = Clean(frameStart:frameEnd);
+
+            % Frame from each microphone and averaging
+            weights=1/
+            micFrame = Data(frameStart:frameEnd, 1:m);
+
+            % FFT of frames
+            S = fft(cleanFrame.*window, K);
+            EstimatedS = fft(micFrame.*window, K);
+
+            % Variance for this frame
+            varianceSum = varianceSum + sum(abs(EstimatedS - S).^2);
+        end
+
+        % Average variance for this number of microphones
+        varemp2(m) = varianceSum / (K * L);
+    end
 
 
 

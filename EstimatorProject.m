@@ -86,7 +86,7 @@ end
 for k = 1:K
     for l = 1:L
         % Element-wise multiplication and sum across the M dimension
-        stackedS(k, l) = sum(conj(W(k, l, :)) .* fftResult(k, l, :));
+        stackedS(k, l) = sum(conj(W(k, l, :)) .* fftResult(k, l, :))/16;
     end
 end
 
