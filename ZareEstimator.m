@@ -68,11 +68,11 @@ for m = 1:nrmics
     for l = 1:L_1s
         frameStart = (l-1) * shiftSize + 1;
         frameEnd = frameStart + frameSize - 1;
-
+        
         noise_FFT=fft(Data(frameStart:frameEnd,m).*window,K);
         mic_m_sum=mic_m_sum+abs(noise_FFT).^2;
     end
-    estimated_noise(m,:)=(mic_m_sum').*(1/L);
+    estimated_noise(m,:)=(mic_m_sum').*(1/L_1s);
     
 end
 %average over the frequency bins and 
@@ -91,36 +91,6 @@ hold on;
 plot(varemp)
 hold off;
 %legend("crlb","actual")
-
-%% 
-   varemp2 = zeros(nrmics, 1);
-   % Loop over number of microphones
-    for m = 1:nrmics
-        varianceSum = 0;
-
-        % Process each frame
-        for l = 1:L
-            frameStart = (l-1) * shiftSize + 1;
-            frameEnd = frameStart + frameSize - 1;
-
-            % Frame from clean signal
-            cleanFrame = Clean(frameStart:frameEnd);
-
-            % Frame from each microphone and averaging
-            weights=1/
-            micFrame = Data(frameStart:frameEnd, 1:m);
-
-            % FFT of frames
-            S = fft(cleanFrame.*window, K);
-            EstimatedS = fft(micFrame.*window, K);
-
-            % Variance for this frame
-            varianceSum = varianceSum + sum(abs(EstimatedS - S).^2);
-        end
-
-        % Average variance for this number of microphones
-        varemp2(m) = varianceSum / (K * L);
-    end
 
 
 

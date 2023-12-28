@@ -41,29 +41,72 @@ for m = 1:nrmics
 end
    
 %%
+%estimate the noise in the first second
+
+%now to make an estimate of the noise based on the 1st second of noise
+Noise_duration=1;
+L_1s=(Noise_duration-frameLength)/(frameLength*(0.5))+1;
+%variance over L frames
+estimated_noise_psd=zeros(nrmics,K);
+
+for m = 1:nrmics
+    mic_m_sum=zeros(K,1);
+    for l = 1:L_1s
+        frameStart = (l-1) * shiftSize + 1;
+        frameEnd = frameStart + frameSize - 1;
+        
+        noisyFrame=Data(frameStart:frameEnd,m).*window;
+        noise_FFT=fft(noisyFrame,K);
+        mic_m_sum=mic_m_sum+abs(noise_FFT).^2;
+        
+    end
+    estimated_noise_psd(m,:)=(mic_m_sum').*1/L_1s;
+end
+
+%% 
 
 % Estimate PSDs for signal and noise
 Sxx = zeros(K, L);
 Nxx = zeros(K, L);
+% for m = 1:nrmics
+%     for i = 1:numFrames
+%         frameStart = (i-1) * stepSize + 1;
+%         frameEnd = frameStart + frameSize - 1;
+% 
+%         % Clean and noisy frames
+%         cleanFrame = Clean(frameStart:frameEnd) .* window;
+%         noisyFrame = Data(frameStart:frameEnd, m) .* window;
+% 
+%         % FFT
+%         cleanPSD = abs(fft(cleanFrame)).^2;
+%         noisyPSD = abs(fft(noisyFrame)).^2;
+% 
+%         % PSD estimation
+%         Sxx(:, i) = Sxx(:, i) + cleanPSD / nrmics;
+%         noisePSD = noisyPSD - cleanPSD;
+%         Nxx(:, i) = Nxx(:, i) + noisePSD / nrmics;
+%     end
+% end
+
+
 for m = 1:nrmics
     for i = 1:numFrames
         frameStart = (i-1) * stepSize + 1;
         frameEnd = frameStart + frameSize - 1;
 
         % Clean and noisy frames
-        cleanFrame = Clean(frameStart:frameEnd) .* window;
         noisyFrame = Data(frameStart:frameEnd, m) .* window;
 
         % FFT
-        cleanFFT = fft(cleanFrame);
-        noisyFFT = fft(noisyFrame);
+        cleanPSDest = abs(fft(noisyFrame)).^2-estimated_noise_psd(m,:)';
+        noisePSD = estimated_noise_psd(m,:)';
 
         % PSD estimation
-        Sxx(:, i) = Sxx(:, i) + abs(cleanFFT).^2 / nrmics;
-        noiseFFT = noisyFFT - cleanFFT;
-        Nxx(:, i) = Nxx(:, i) + abs(noiseFFT).^2 / nrmics;
+        Sxx(:, i) = Sxx(:, i) + cleanPSDest / nrmics;
+        Nxx(:, i) = Nxx(:, i) + noisePSD / nrmics;
     end
 end
+
 %%
 % Initialize W
 W = complex(zeros(K, L, nrmics));
@@ -86,7 +129,7 @@ end
 for k = 1:K
     for l = 1:L
         % Element-wise multiplication and sum across the M dimension
-        stackedS(k, l) = sum(conj(W(k, l, :)) .* fftResult(k, l, :))/16;
+        stackedS(k, l) = sum(conj(W(k, l, :)) .* fftResult(k, l, :))/nrmics;
     end
 end
 
@@ -105,11 +148,24 @@ for i = 1:numFrames
     % Overlap-add
     reconstructedSignal(frameStart:frameEnd) = reconstructedSignal(frameStart:frameEnd) + ifftFrame;
 end
+audiowrite("reconstructed.wav", reconstructedSignal, 16000);
 %%
 figure;
-plot(Clean, 'b', 'DisplayName', 'Original');
-hold on;
 plot(reconstructedSignal, 'r', 'DisplayName', 'Modeled');
+hold on;
+
+
+
+    [numSamples, numMics] = size(Data);
+    weights = ones(numMics, 1) / numMics; % Equal weights
+    estimatedSignal = Data * weights; % Weighted average across microphones
+    %plot(Data)
+    
+    
+    plot(Clean, 'b', 'DisplayName', 'Original');
+    %plot(estimatedSignal,'g', 'DisplayName', 'averaged');
+
+
 xlabel('Time');
 ylabel('Value');
 title('Original vs Modeled Time Series');
