@@ -8,6 +8,8 @@ load('Data.mat'); % Assuming Data.mat contains 'Data' and 'Clean'
 %%
 % Parameters
 fs = 16000; % Sampling frequency 
+varempEst = zeros(nrmics, 1 % first value of varempEst is very high so the plot will be ugly because of that 
+for nrmicsManual = 1:nrmics
 %%
 frameLength = 0.02; % 20 ms frame
 frameShift = 0.01; % 50% overlap (10 ms)
@@ -27,9 +29,9 @@ L = numFrames; % Number of time frames
 window = hann(K);
 
 % Initialize FFT result matrix
-fftResult = zeros(frameSize, numFrames,nrmics);
+fftResult = zeros(frameSize, numFrames,nrmicsManual);
 stackedS = zeros(frameSize, numFrames);
-for m = 1:nrmics
+for m = 1:nrmicsManual
     % Divide signal into frames and perform FFT
     for i = 1:numFrames
         frameStart = (i-1) * stepSize + 1;
@@ -47,9 +49,9 @@ end
 Noise_duration=1;
 L_1s=(Noise_duration-frameLength)/(frameLength*(0.5))+1;
 %variance over L frames
-estimated_noise_psd=zeros(nrmics,K);
+estimated_noise_psd=zeros(nrmicsManual,K);
 
-for m = 1:nrmics
+for m = 1:nrmicsManual
     mic_m_sum=zeros(K,1);
     for l = 1:L_1s
         frameStart = (l-1) * shiftSize + 1;
@@ -62,6 +64,9 @@ for m = 1:nrmics
     end
     estimated_noise_psd(m,:)=(mic_m_sum').*1/L_1s;
 end
+%% average over the frequency bins and 
+var_m=mean(estimated_noise_psd,2);
+
 
 %% 
 
@@ -89,7 +94,7 @@ Nxx = zeros(K, L);
 % end
 
 
-for m = 1:nrmics
+for m = 1:nrmicsManual
     for i = 1:numFrames
         frameStart = (i-1) * stepSize + 1;
         frameEnd = frameStart + frameSize - 1;
@@ -102,14 +107,14 @@ for m = 1:nrmics
         noisePSD = estimated_noise_psd(m,:)';
 
         % PSD estimation
-        Sxx(:, i) = Sxx(:, i) + cleanPSDest / nrmics;
-        Nxx(:, i) = Nxx(:, i) + noisePSD / nrmics;
+        Sxx(:, i) = Sxx(:, i) + cleanPSDest / nrmicsManual;
+        Nxx(:, i) = Nxx(:, i) + noisePSD / nrmicsManual;
     end
 end
 
 %%
 % Initialize W
-W = complex(zeros(K, L, nrmics));
+W = complex(zeros(K, L, nrmicsManual));
 
 % Calculate Wiener filter weights
 for k = 1:K
@@ -129,9 +134,42 @@ end
 for k = 1:K
     for l = 1:L
         % Element-wise multiplication and sum across the M dimension
-        stackedS(k, l) = sum(conj(W(k, l, :)) .* fftResult(k, l, :))/nrmics;
+        stackedS(k, l) = sum(conj(W(k, l, :)) .* fftResult(k, l, :))/nrmicsManual;
     end
 end
+  varianceSum = 0;
+
+        % Process each frame
+        for l = 1:L
+            frameStart = (l-1) * shiftSize + 1;
+            frameEnd = frameStart + frameSize - 1;
+
+            % Frame from clean signal
+            cleanFrame = Clean(frameStart:frameEnd);
+
+            % FFT of frames
+            S = fft(cleanFrame.*window, K);
+
+            % Variance for this frame
+            varianceSum = varianceSum + sum(abs(stackedS(:,l) - S).^2);
+        end
+
+        % Average variance for this number of microphones
+        varempEst(nrmicsManual) = varianceSum / (K * L);
+end
+%%
+%now lets get the fischer information for different numbers of microphones
+cum_sum_inverse_estimated_noise=cumsum(1./var_m);
+
+%now lets calculate the CRLB for different numbers of microphones
+crlb_m=1./cum_sum_inverse_estimated_noise;
+
+plot(crlb_m)
+hold on;
+plot(varempEst)
+hold off;
+%legend("crlb","actual")
+   
 
 
 %%
@@ -151,19 +189,9 @@ end
 audiowrite("reconstructed.wav", reconstructedSignal, 16000);
 %%
 figure;
-plot(reconstructedSignal, 'r', 'DisplayName', 'Modeled');
+plot(Clean, 'b', 'DisplayName', 'Original');
 hold on;
-
-
-
-    [numSamples, numMics] = size(Data);
-    weights = ones(numMics, 1) / numMics; % Equal weights
-    estimatedSignal = Data * weights; % Weighted average across microphones
-    %plot(Data)
-    
-    
-    plot(Clean, 'b', 'DisplayName', 'Original');
-    %plot(estimatedSignal,'g', 'DisplayName', 'averaged');
+plot(reconstructedSignal, 'r', 'DisplayName', 'Modeled');
 
 
 xlabel('Time');
