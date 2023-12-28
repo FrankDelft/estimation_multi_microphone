@@ -8,7 +8,7 @@ load('Data.mat'); % Assuming Data.mat contains 'Data' and 'Clean'
 %%
 % Parameters
 fs = 16000; % Sampling frequency 
-varempEst = zeros(nrmics, 1 % first value of varempEst is very high so the plot will be ugly because of that 
+varempEst = zeros(nrmics, 1); % first value of varempEst is very high so the plot will be ugly because of that 
 for nrmicsManual = 1:nrmics
 %%
 frameLength = 0.02; % 20 ms frame
