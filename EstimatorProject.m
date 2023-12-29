@@ -106,6 +106,9 @@ plot(Clean, 'b', 'DisplayName', 'Original');
 hold on;
 plot(reconstructedSignal, 'r', 'DisplayName', 'Modeled');
 
+% Calculate the Mean Squared Error (MSE)
+mseValue = mean((Clean((1:end-55)) - reconstructedSignal).^2); % some part of the reconstructedSignal (last 55 samples) was lost due to calculations so we had to exclude the last 55 samples of the clean signal 
+
 xlabel('Time');
 ylabel('Value');
 title('Original vs Modeled Time Series');
