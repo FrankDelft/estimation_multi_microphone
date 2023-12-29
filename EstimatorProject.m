@@ -87,6 +87,7 @@ for nrmicsManual = 1:nrmics
     varempEst_ave(nrmicsManual)=empVarCalc(K,L,shiftSize,Clean,S_mic_ave ,window);
     
 end
+%% 
 
 %now lets get the fischer information for different numbers of microphones
 cum_sum_inverse_estimated_noise=cumsum(1./var_m);
@@ -100,14 +101,17 @@ plot(varempEst_wiener)
 hold off;
 %legend("crlb","actual")
    
-reconstructedSignal=reconstructTimeDomainSignal(stepSize,frameSize,numFrames,stackedS);
+reconstructedSignal_wiener=reconstructTimeDomainSignal(stepSize,frameSize,numFrames,stackedS);
+reconstructedSignal_ave=reconstructTimeDomainSignal(stepSize,frameSize,numFrames,S_mic_ave);
 figure;
 plot(Clean, 'b', 'DisplayName', 'Original');
 hold on;
-plot(reconstructedSignal, 'r', 'DisplayName', 'Modeled');
+plot(reconstructedSignal_wiener, 'r', 'DisplayName', 'Modeled');
 
 % Calculate the Mean Squared Error (MSE)
-mseValue = mean((Clean((1:end-55)) - reconstructedSignal).^2); % some part of the reconstructedSignal (last 55 samples) was lost due to calculations so we had to exclude the last 55 samples of the clean signal 
+mseValue_wiener = mean((Clean((1:end-55)) - reconstructedSignal_wiener).^2); % some part of the reconstructedSignal (last 55 samples) was lost due to calculations so we had to exclude the last 55 samples of the clean signal 
+mseValue_ave = mean((Clean((1:end-55)) - reconstructedSignal_ave).^2); 
+mseValue_m1=mean((Clean((1:end-55)) - Data(1:end-55,1)).^2);%the first microphones MSE value
 
 xlabel('Time');
 ylabel('Value');
